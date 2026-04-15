@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "RTL Fixer",
+  "name": "AutoRTL",
   "version": "1.0.0",
   "description": "Automatically fixes Arabic (RTL) text direction in input fields, textareas, and contenteditable elements across all websites.",
   "permissions": [

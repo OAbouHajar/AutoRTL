@@ -1,5 +1,5 @@
 /**
- * RTL Fixer — Popup Script (v2)
+ * AutoRTL — Popup Script (v2)
  * Premium UI interactions, settings sync, and live stats.
  */
 (() => {
@@ -78,11 +78,11 @@
   // ── Load saved settings ──
 
   chrome.storage.local.get(
-    { rtlFixerEnabled: true, rtlFixerMode: "auto", rtlFixerFont: "" },
+    { autoRtlEnabled: true, autoRtlMode: "auto", autoRtlFont: "" },
     (data) => {
-      isEnabled   = data.rtlFixerEnabled;
-      currentMode = data.rtlFixerMode;
-      currentFont = data.rtlFixerFont || "";
+      isEnabled   = data.autoRtlEnabled;
+      currentMode = data.autoRtlMode;
+      currentFont = data.autoRtlFont || "";
       updateToggleUI();
       updateModeUI();
       updateFontUI();
@@ -96,7 +96,7 @@
       if (!tabs[0]?.id) return;
       chrome.tabs.sendMessage(
         tabs[0].id,
-        { type: "rtl-fixer-get-state" },
+        { type: "autortl-get-state" },
         (resp) => {
           if (chrome.runtime.lastError || !resp) return;
           if (typeof resp.fixedCount === "number") statFixed.textContent = resp.fixedCount;
@@ -111,9 +111,9 @@
 
   function pushUpdate() {
     chrome.storage.local.set({
-      rtlFixerEnabled: isEnabled,
-      rtlFixerMode: currentMode,
-      rtlFixerFont: currentFont,
+      autoRtlEnabled: isEnabled,
+      autoRtlMode: currentMode,
+      autoRtlFont: currentFont,
     });
 
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
@@ -121,7 +121,7 @@
       chrome.tabs.sendMessage(
         tabs[0].id,
         {
-          type: "rtl-fixer-update",
+          type: "autortl-update",
           enabled: isEnabled,
           mode: currentMode,
           font: currentFont,

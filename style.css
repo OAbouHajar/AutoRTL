@@ -1,8 +1,8 @@
 /* ================================================
-   RTL Fixer — Injected Styles (content pages)
+   AutoRTL — Injected Styles (content pages)
    ================================================ */
 
 /* Mixed-text fix class */
-.rtl-fixer-active {
+.autortl-active {
   unicode-bidi: plaintext !important;
 }

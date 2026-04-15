@@ -17,6 +17,20 @@
 
 ---
 
+## Screenshots
+
+<p align="center">
+  <img src="imgs/img1.png" width="600" alt="Arabic text auto-aligned RTL in input field" />
+</p>
+<p align="center"><em>Arabic input automatically switches to RTL direction</em></p>
+
+<p align="center">
+  <img src="imgs/img2.png" width="600" alt="Arabic response text displayed in correct RTL direction" />
+</p>
+<p align="center"><em>Output text also fixed — headings, paragraphs, and lists render RTL</em></p>
+
+---
+
 ## Features
 
 - **Auto-detect Arabic** — regex-based detection for Arabic, Persian, and Urdu scripts
@@ -26,8 +40,7 @@
 - **Mixed text support** — `unicode-bidi: plaintext` ensures Arabic + English renders correctly
 - **Custom Arabic fonts** — choose from 10 popular Google Arabic fonts (Cairo, Amiri, Tajawal, etc.)
 - **3 modes** — Auto (default), Force RTL, Force LTR
-- **Floating toggle** — draggable on-page button to cycle modes
-- **Popup settings** — enable/disable, mode selector, font picker with live preview
+- **Premium popup** — toggle, mode selector, font chips with live preview, live stats
 - **Persistent settings** — saved via `chrome.storage.local`
 - **Works everywhere** — ChatGPT, Claude, WhatsApp Web, Google Docs, and all websites
 
@@ -54,10 +67,9 @@
 1. **Navigate** to any website with Arabic text
 2. **Type Arabic** in any input field — direction switches to RTL automatically
 3. **Displayed text** containing Arabic is also fixed on page load
-4. Click the **floating toggle** (bottom-right) to cycle: Auto → Force RTL → Force LTR
-5. Click the **extension icon** in the toolbar to open settings:
+4. Click the **extension icon** in the toolbar to open settings:
    - Enable/disable the extension
-   - Choose direction mode
+   - Choose direction mode (Auto / RTL / LTR)
    - Select a custom Arabic font
    - View live stats
 
@@ -67,13 +79,17 @@
 AutoRTL/
 ├── manifest.json       # Chrome Extension manifest (v3)
 ├── content.js          # Core logic (direction detection, DOM scanning, MutationObserver)
-├── style.css           # Floating toggle button styles
+├── style.css           # Injected page styles
 ├── popup.html          # Settings popup UI
+├── popup.css           # Premium popup styles
 ├── popup.js            # Popup logic & settings management
 ├── icons/
 │   ├── icon16.png
 │   ├── icon48.png
 │   └── icon128.png
+├── imgs/
+│   ├── img1.png
+│   └── img2.png
 ├── LICENSE             # MIT License
 ├── README.md
 ├── CONTRIBUTING.md

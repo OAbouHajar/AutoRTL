@@ -1,5 +1,5 @@
 /**
- * RTL Fixer — Content Script
+ * AutoRTL — Content Script
  * Automatically detects Arabic text in input fields, textareas,
  * contenteditable elements, AND displayed text across all websites.
  * Wrapped in an IIFE to avoid global scope pollution.
@@ -15,7 +15,7 @@
   const ARABIC_RE = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
 
   /** Attribute flag to mark elements we have processed */
-  const MARKER = "data-rtl-fixer";
+  const MARKER = "data-autortl";
 
   /** Selector for text-entry elements (inputs) */
   const INPUT_SELECTOR = [
@@ -243,7 +243,7 @@
   function fixTextElement(el) {
     if (!enabled) return;
     if (SKIP_TAGS.has(el.tagName)) return;
-    if (el.id === "rtl-fixer-toggle") return;
+    if (el.id === "autortl-toggle") return;
     // Never touch elements that are inside a contenteditable — this disrupts cursor
     if (el.isContentEditable || isInsideEditable(el)) return;
 
@@ -268,7 +268,7 @@
   function fixGenericBlock(el) {
     if (!enabled) return;
     if (SKIP_TAGS.has(el.tagName)) return;
-    if (el.id === "rtl-fixer-toggle") return;
+    if (el.id === "autortl-toggle") return;
     if (el.getAttribute(MARKER)) return; // already processed
     // Never touch elements that are inside a contenteditable
     if (el.isContentEditable || isInsideEditable(el)) return;
@@ -427,9 +427,9 @@
   function saveSettings() {
     try {
       chrome.storage.local.set({
-        rtlFixerEnabled: enabled,
-        rtlFixerMode: mode,
-        rtlFixerFont: customFont,
+        autoRtlEnabled: enabled,
+        autoRtlMode: mode,
+        autoRtlFont: customFont,
       });
     } catch { /* not available */ }
   }
@@ -438,11 +438,11 @@
     return new Promise((resolve) => {
       try {
         chrome.storage.local.get(
-          { rtlFixerEnabled: true, rtlFixerMode: "auto", rtlFixerFont: "" },
+          { autoRtlEnabled: true, autoRtlMode: "auto", autoRtlFont: "" },
           (data) => {
-            enabled = data.rtlFixerEnabled;
-            mode = data.rtlFixerMode;
-            customFont = data.rtlFixerFont || "";
+            enabled = data.autoRtlEnabled;
+            mode = data.autoRtlMode;
+            customFont = data.autoRtlFont || "";
             if (customFont) ensureFontLoaded(customFont);
             resolve();
           }
@@ -457,7 +457,7 @@
 
   try {
     chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
-      if (msg.type === "rtl-fixer-update") {
+      if (msg.type === "autortl-update") {
         if (typeof msg.enabled === "boolean") enabled = msg.enabled;
         if (msg.mode) mode = msg.mode;
         if (typeof msg.font === "string") {
@@ -469,7 +469,7 @@
         sendResponse({ ok: true });
       }
 
-      if (msg.type === "rtl-fixer-get-state") {
+      if (msg.type === "autortl-get-state") {
         // Gather live stats for the popup
         const fixedCount = document.querySelectorAll(`[${MARKER}="text"]`).length;
         const inputCount = document.querySelectorAll(`[${MARKER}="input"]`).length;
