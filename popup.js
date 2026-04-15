@@ -1,57 +1,96 @@
 /**
- * RTL Fixer — Popup Script
- * Manages settings UI, persists to chrome.storage.local,
- * and syncs with the active tab's content script.
+ * RTL Fixer — Popup Script (v2)
+ * Premium UI interactions, settings sync, and live stats.
  */
 (() => {
   "use strict";
 
-  // ── DOM references ──
-  const enableToggle = document.getElementById("enableToggle");
-  const statusDot = document.getElementById("statusDot");
-  const statusLabel = document.getElementById("statusLabel");
-  const modeBtns = document.querySelectorAll(".mode-btn");
-  const fontSelect = document.getElementById("fontSelect");
-  const fontPreview = document.getElementById("fontPreview");
-  const statFixed = document.getElementById("statFixed");
-  const statInputs = document.getElementById("statInputs");
-  const statMode = document.getElementById("statMode");
-  const reloadLink = document.getElementById("reloadLink");
+  // ── DOM ──
+  const togglePill   = document.getElementById("togglePill");
+  const toggleLabel  = document.getElementById("toggleLabel");
+  const statusDot    = document.getElementById("statusDot");
+  const statusText   = document.getElementById("statusText");
+  const modeBtns     = document.querySelectorAll(".mode-btn");
+  const fontChips    = document.querySelectorAll(".font-chip");
+  const fontPreview  = document.getElementById("fontPreview");
+  const statFixed    = document.getElementById("statFixed");
+  const statInputs   = document.getElementById("statInputs");
+  const statMode     = document.getElementById("statMode");
 
   const MODE_DISPLAY = { auto: "Auto", "force-rtl": "RTL", "force-ltr": "LTR" };
+  const STATUS_MSG   = {
+    auto:      "Auto-detecting Arabic text",
+    "force-rtl": "RTL applied to all elements",
+    "force-ltr": "LTR applied to all elements",
+  };
 
+  let isEnabled   = true;
   let currentMode = "auto";
   let currentFont = "";
 
-  // ── Update status indicator ──
-  function updateStatusUI(isEnabled) {
+  // ── UI updaters ──
+
+  function updateToggleUI() {
+    togglePill.classList.toggle("on", isEnabled);
+    toggleLabel.textContent = isEnabled ? "Active" : "Paused";
+    toggleLabel.classList.toggle("off", !isEnabled);
     statusDot.classList.toggle("off", !isEnabled);
-    statusLabel.textContent = isEnabled ? "Active" : "Disabled";
+    statusText.textContent = isEnabled
+      ? STATUS_MSG[currentMode]
+      : "Extension paused";
   }
 
-  // ── Update mode buttons ──
-  function updateModeUI(mode) {
-    modeBtns.forEach((btn) => {
-      btn.classList.toggle("active", btn.dataset.mode === mode);
-    });
-    statMode.textContent = MODE_DISPLAY[mode] || "Auto";
+  function updateModeUI() {
+    modeBtns.forEach((b) =>
+      b.classList.toggle("active", b.dataset.mode === currentMode)
+    );
+    statMode.textContent = MODE_DISPLAY[currentMode] || "Auto";
+    if (isEnabled) statusText.textContent = STATUS_MSG[currentMode];
   }
 
-  // ── Load settings into UI ──
+  function updateFontUI() {
+    fontChips.forEach((c) =>
+      c.classList.toggle("active", c.dataset.font === currentFont)
+    );
+    applyPreviewFont();
+  }
+
+  function applyPreviewFont() {
+    if (currentFont) {
+      fontPreview.style.fontFamily = currentFont;
+      loadGoogleFont(currentFont);
+    } else {
+      fontPreview.style.removeProperty("font-family");
+    }
+  }
+
+  function loadGoogleFont(fontValue) {
+    const name = fontValue.split(",")[0].replace(/'/g, "").trim();
+    if (!name) return;
+    // Avoid duplicates
+    if (document.querySelector(`link[href*="${encodeURIComponent(name)}"]`)) return;
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(name)}:wght@400;700&display=swap`;
+    document.head.appendChild(link);
+  }
+
+  // ── Load saved settings ──
+
   chrome.storage.local.get(
     { rtlFixerEnabled: true, rtlFixerMode: "auto", rtlFixerFont: "" },
     (data) => {
-      enableToggle.checked = data.rtlFixerEnabled;
+      isEnabled   = data.rtlFixerEnabled;
       currentMode = data.rtlFixerMode;
       currentFont = data.rtlFixerFont || "";
-      updateStatusUI(data.rtlFixerEnabled);
-      updateModeUI(data.rtlFixerMode);
-      fontSelect.value = currentFont;
-      updateFontPreview(currentFont);
+      updateToggleUI();
+      updateModeUI();
+      updateFontUI();
     }
   );
 
-  // ── Request stats from content script ──
+  // ── Stats ──
+
   function requestStats() {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       if (!tabs[0]?.id) return;
@@ -60,24 +99,17 @@
         { type: "rtl-fixer-get-state" },
         (resp) => {
           if (chrome.runtime.lastError || !resp) return;
-          // Update stats from content script counts
-          if (typeof resp.fixedCount === "number") {
-            statFixed.textContent = resp.fixedCount;
-          }
-          if (typeof resp.inputCount === "number") {
-            statInputs.textContent = resp.inputCount;
-          }
+          if (typeof resp.fixedCount === "number") statFixed.textContent = resp.fixedCount;
+          if (typeof resp.inputCount === "number") statInputs.textContent = resp.inputCount;
         }
       );
     });
   }
   requestStats();
 
-  // ── Push settings to content script ──
-  function pushUpdate() {
-    const isEnabled = enableToggle.checked;
-    updateStatusUI(isEnabled);
+  // ── Push to content script ──
 
+  function pushUpdate() {
     chrome.storage.local.set({
       rtlFixerEnabled: isEnabled,
       rtlFixerMode: currentMode,
@@ -98,46 +130,33 @@
       );
     });
 
-    // Refresh stats shortly after
-    setTimeout(requestStats, 300);
+    setTimeout(requestStats, 350);
   }
 
-  // ── Event listeners ──
-  enableToggle.addEventListener("change", pushUpdate);
+  // ── Events ──
 
+  // Toggle
+  togglePill.addEventListener("click", () => {
+    isEnabled = !isEnabled;
+    updateToggleUI();
+    pushUpdate();
+  });
+
+  // Mode buttons
   modeBtns.forEach((btn) => {
     btn.addEventListener("click", () => {
       currentMode = btn.dataset.mode;
-      updateModeUI(currentMode);
+      updateModeUI();
       pushUpdate();
     });
   });
 
-  // ── Font selector ──
-  function updateFontPreview(fontValue) {
-    if (fontValue) {
-      fontPreview.style.fontFamily = fontValue;
-      // Load Google Font in popup for preview
-      const name = fontValue.split(",")[0].replace(/'/g, "").trim();
-      const link = document.createElement("link");
-      link.rel = "stylesheet";
-      link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(name)}:wght@400;700&display=swap`;
-      document.head.appendChild(link);
-    } else {
-      fontPreview.style.removeProperty("font-family");
-    }
-  }
-
-  fontSelect.addEventListener("change", () => {
-    currentFont = fontSelect.value;
-    updateFontPreview(currentFont);
-    pushUpdate();
-  });
-
-  reloadLink.addEventListener("click", () => {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      if (tabs[0]?.id) chrome.tabs.reload(tabs[0].id);
+  // Font chips
+  fontChips.forEach((chip) => {
+    chip.addEventListener("click", () => {
+      currentFont = chip.dataset.font;
+      updateFontUI();
+      pushUpdate();
     });
-    window.close();
   });
 })();

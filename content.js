@@ -397,74 +397,6 @@
   });
 
   // ──────────────────────────────────────────────
-  //  Floating toggle button
-  // ──────────────────────────────────────────────
-
-  const MODE_LABELS = {
-    auto: "🔄 Auto",
-    "force-rtl": "➡️ RTL",
-    "force-ltr": "⬅️ LTR",
-  };
-
-  const MODE_CYCLE = ["auto", "force-rtl", "force-ltr"];
-
-  function createFloatingToggle() {
-    const btn = document.createElement("div");
-    btn.id = "rtl-fixer-toggle";
-    btn.textContent = MODE_LABELS[mode];
-    btn.title = "RTL Fixer — click to cycle mode, drag to move";
-
-    btn.addEventListener("click", () => {
-      if (btn.dataset.dragged === "true") {
-        btn.dataset.dragged = "false";
-        return;
-      }
-      const idx = MODE_CYCLE.indexOf(mode);
-      mode = MODE_CYCLE[(idx + 1) % MODE_CYCLE.length];
-      btn.textContent = MODE_LABELS[mode];
-      reapplyAll();
-      saveSettings();
-    });
-
-    // ── Drag logic ──
-    let isDragging = false;
-    let startX, startY, origX, origY;
-
-    btn.addEventListener("mousedown", (e) => {
-      isDragging = false;
-      startX = e.clientX;
-      startY = e.clientY;
-      origX = btn.offsetLeft;
-      origY = btn.offsetTop;
-      e.preventDefault();
-
-      function onMove(ev) {
-        const dx = ev.clientX - startX;
-        const dy = ev.clientY - startY;
-        if (!isDragging && Math.abs(dx) + Math.abs(dy) > 4) isDragging = true;
-        if (isDragging) {
-          btn.style.left = `${origX + dx}px`;
-          btn.style.top = `${origY + dy}px`;
-          btn.style.right = "auto";
-          btn.style.bottom = "auto";
-        }
-      }
-
-      function onUp() {
-        document.removeEventListener("mousemove", onMove);
-        document.removeEventListener("mouseup", onUp);
-        if (isDragging) btn.dataset.dragged = "true";
-      }
-
-      document.addEventListener("mousemove", onMove);
-      document.addEventListener("mouseup", onUp);
-    });
-
-    document.body.appendChild(btn);
-    return btn;
-  }
-
-  // ──────────────────────────────────────────────
   //  Google Fonts loader
   // ──────────────────────────────────────────────
 
@@ -533,12 +465,6 @@
           if (customFont) ensureFontLoaded(customFont);
         }
 
-        const toggle = document.getElementById("rtl-fixer-toggle");
-        if (toggle) {
-          toggle.textContent = MODE_LABELS[mode];
-          toggle.style.display = enabled ? "" : "none";
-        }
-
         reapplyAll();
         sendResponse({ ok: true });
       }
@@ -570,8 +496,6 @@
       attributeFilter: ["contenteditable"],
       characterData: true,
     });
-
-    createFloatingToggle();
   }
 
   init();
