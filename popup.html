@@ -198,6 +198,48 @@
       margin-bottom: 4px;
     }
 
+    /* ── Font select ── */
+    .font-select {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--bg-input);
+      color: var(--text);
+      font-size: 13px;
+      font-family: inherit;
+      cursor: pointer;
+      appearance: none;
+      -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%238b8fa3' viewBox='0 0 16 16'%3E%3Cpath d='M1.646 4.646a.5.5 0 01.708 0L8 10.293l5.646-5.647a.5.5 0 01.708.708l-6 6a.5.5 0 01-.708 0l-6-6a.5.5 0 010-.708z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+      padding-right: 30px;
+      transition: border-color 0.2s;
+    }
+
+    .font-select:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .font-select:hover {
+      border-color: var(--text-muted);
+    }
+
+    .font-preview {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: var(--radius-sm);
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      font-size: 15px;
+      color: var(--text);
+      direction: rtl;
+      text-align: right;
+      line-height: 1.6;
+    }
+
     /* ── Stats row ── */
     .stats {
       display: flex;
@@ -331,6 +373,25 @@
         <span class="mode-icon">➡️</span>Force LTR
       </button>
     </div>
+  </div>
+
+  <!-- Font -->
+  <div class="card">
+    <div class="card-title">Arabic Font</div>
+    <select class="font-select" id="fontSelect">
+      <option value="">Default (page font)</option>
+      <option value="'Noto Naskh Arabic', serif">Noto Naskh Arabic</option>
+      <option value="'Amiri', serif">Amiri</option>
+      <option value="'Cairo', sans-serif">Cairo</option>
+      <option value="'Tajawal', sans-serif">Tajawal</option>
+      <option value="'IBM Plex Sans Arabic', sans-serif">IBM Plex Sans Arabic</option>
+      <option value="'Readex Pro', sans-serif">Readex Pro</option>
+      <option value="'Noto Kufi Arabic', sans-serif">Noto Kufi Arabic</option>
+      <option value="'Almarai', sans-serif">Almarai</option>
+      <option value="'Scheherazade New', serif">Scheherazade New</option>
+      <option value="'Lateef', serif">Lateef</option>
+    </select>
+    <div class="font-preview" id="fontPreview">بسم الله الرحمن الرحيم — Preview</div>
   </div>
 
   <!-- Stats -->

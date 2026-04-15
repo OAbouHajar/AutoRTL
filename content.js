@@ -58,6 +58,9 @@
    */
   let mode = "auto";
 
+  /** Custom Arabic font (empty string = page default) */
+  let customFont = "";
+
   /** WeakSet to avoid duplicate input listeners */
   const trackedInputs = new WeakSet();
 
@@ -128,7 +131,7 @@
    */
   function setDir(el, dir) {
     // Skip if direction already matches — prevents cursor jumps
-    if (el.style.direction === dir) return;
+    if (el.style.direction === dir && !customFont) return;
 
     const editable = isEditable(el);
 
@@ -144,6 +147,13 @@
     // unicode-bidi: plaintext breaks cursor in <input>/<textarea>
     if (!editable) {
       el.style.unicodeBidi = "plaintext";
+    }
+
+    // Apply custom font when direction is RTL and a font is selected
+    if (dir === "rtl" && customFont) {
+      el.style.fontFamily = customFont;
+    } else if (!customFont) {
+      el.style.removeProperty("font-family");
     }
   }
 
@@ -176,6 +186,7 @@
     el.style.removeProperty("direction");
     el.style.removeProperty("text-align");
     el.style.removeProperty("unicode-bidi");
+    el.style.removeProperty("font-family");
   }
 
   // ──────────────────────────────────────────────
@@ -454,12 +465,40 @@
   }
 
   // ──────────────────────────────────────────────
+  //  Google Fonts loader
+  // ──────────────────────────────────────────────
+
+  const loadedFonts = new Set();
+
+  /**
+   * Inject a Google Fonts stylesheet for the given font family.
+   * Only loads each font once.
+   * @param {string} fontValue  e.g. "'Cairo', sans-serif"
+   */
+  function ensureFontLoaded(fontValue) {
+    if (!fontValue) return;
+    // Extract the font name from the CSS value, e.g. "'Cairo', sans-serif" -> "Cairo"
+    const name = fontValue.split(",")[0].replace(/'/g, "").trim();
+    if (!name || loadedFonts.has(name)) return;
+    loadedFonts.add(name);
+
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(name)}:wght@400;700&display=swap`;
+    document.head.appendChild(link);
+  }
+
+  // ──────────────────────────────────────────────
   //  Settings persistence
   // ──────────────────────────────────────────────
 
   function saveSettings() {
     try {
-      chrome.storage.local.set({ rtlFixerEnabled: enabled, rtlFixerMode: mode });
+      chrome.storage.local.set({
+        rtlFixerEnabled: enabled,
+        rtlFixerMode: mode,
+        rtlFixerFont: customFont,
+      });
     } catch { /* not available */ }
   }
 
@@ -467,10 +506,12 @@
     return new Promise((resolve) => {
       try {
         chrome.storage.local.get(
-          { rtlFixerEnabled: true, rtlFixerMode: "auto" },
+          { rtlFixerEnabled: true, rtlFixerMode: "auto", rtlFixerFont: "" },
           (data) => {
             enabled = data.rtlFixerEnabled;
             mode = data.rtlFixerMode;
+            customFont = data.rtlFixerFont || "";
+            if (customFont) ensureFontLoaded(customFont);
             resolve();
           }
         );
@@ -487,6 +528,10 @@
       if (msg.type === "rtl-fixer-update") {
         if (typeof msg.enabled === "boolean") enabled = msg.enabled;
         if (msg.mode) mode = msg.mode;
+        if (typeof msg.font === "string") {
+          customFont = msg.font;
+          if (customFont) ensureFontLoaded(customFont);
+        }
 
         const toggle = document.getElementById("rtl-fixer-toggle");
         if (toggle) {
