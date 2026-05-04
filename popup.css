@@ -18,6 +18,11 @@
   --text-secondary: #8f95a8;
   --text-muted: #555c70;
   --danger: #f87171;
+  --danger-dim: rgba(248, 113, 113, 0.12);
+  --danger-border: rgba(248, 113, 113, 0.3);
+  --success: #34d399;
+  --success-dim: rgba(52, 211, 153, 0.12);
+  --success-border: rgba(52, 211, 153, 0.3);
   --radius: 16px;
   --radius-md: 12px;
   --radius-sm: 8px;
@@ -184,6 +189,13 @@ body {
   margin-bottom: 8px;
 }
 
+.section-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
 /* ── Mode Selector (Primary) ── */
 .mode-selector {
   display: flex;
@@ -283,6 +295,174 @@ body {
   text-align: right;
   line-height: 1.7;
   transition: font-family var(--transition);
+}
+
+/* ── Exclude Row ── */
+.exclude-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+}
+
+.exclude-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.exclude-hostname {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
+}
+
+.exclude-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  border: 1px solid var(--danger-border);
+  background: var(--danger-dim);
+  color: var(--danger);
+  font-size: 11px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all var(--transition);
+  white-space: nowrap;
+}
+
+.exclude-btn:hover {
+  background: rgba(248, 113, 113, 0.2);
+  border-color: var(--danger);
+}
+
+.exclude-btn.restore {
+  border-color: var(--success-border);
+  background: var(--success-dim);
+  color: var(--success);
+}
+
+.exclude-btn.restore:hover {
+  background: rgba(52, 211, 153, 0.2);
+  border-color: var(--success);
+}
+
+.exclude-btn-icon {
+  font-size: 12px;
+  line-height: 1;
+}
+
+/* ── Excluded List ── */
+.excluded-list {
+  max-height: 150px;
+  overflow-y: auto;
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  scrollbar-width: thin;
+  scrollbar-color: var(--text-muted) transparent;
+}
+
+.excluded-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.excluded-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.excluded-list::-webkit-scrollbar-thumb {
+  background: var(--text-muted);
+  border-radius: 4px;
+}
+
+.excluded-empty {
+  padding: 14px 16px;
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: center;
+  font-style: italic;
+}
+
+.excluded-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  transition: background var(--transition);
+}
+
+.excluded-item:last-child {
+  border-bottom: none;
+}
+
+.excluded-item:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.excluded-item-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.excluded-item-restore {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-family: inherit;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition);
+}
+
+.excluded-item-restore:hover {
+  background: var(--danger-dim);
+  border-color: var(--danger-border);
+  color: var(--danger);
+}
+
+.clear-all-btn {
+  padding: 3px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--bg-input);
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all var(--transition);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.clear-all-btn:hover {
+  border-color: var(--success-border);
+  color: var(--success);
+  background: var(--success-dim);
 }
 
 /* ── Stats ── */

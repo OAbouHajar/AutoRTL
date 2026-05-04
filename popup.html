@@ -60,6 +60,33 @@
 
   <div class="divider"></div>
 
+  <!-- ── Exclude Current Site ── -->
+  <div class="section">
+    <div class="section-title">Site Exclusion</div>
+    <div class="exclude-row">
+      <div class="exclude-info">
+        <span class="exclude-hostname" id="excludeHostname">—</span>
+      </div>
+      <button class="exclude-btn" id="excludeBtn">
+        <span class="exclude-btn-icon" id="excludeBtnIcon">🚫</span>
+        <span id="excludeBtnText">Exclude</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Exclusion List ── -->
+  <div class="section">
+    <div class="section-title-row">
+      <div class="section-title" style="margin-bottom:0">Excluded Sites</div>
+      <button class="clear-all-btn hidden" id="clearAllBtn" title="Restore all sites">Restore All</button>
+    </div>
+    <div class="excluded-list" id="excludedList">
+      <div class="excluded-empty" id="excludedEmpty">No excluded sites</div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
   <!-- ── Stats ── -->
   <div class="section">
     <div class="stats-row">

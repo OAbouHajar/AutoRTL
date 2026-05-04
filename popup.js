@@ -1,6 +1,6 @@
 /**
- * AutoRTL — Popup Script (v2)
- * Premium UI interactions, settings sync, and live stats.
+ * AutoRTL — Popup Script (v3)
+ * Premium UI interactions, settings sync, live stats, and site exclusion management.
  */
 (() => {
   "use strict";
@@ -17,6 +17,15 @@
   const statInputs   = document.getElementById("statInputs");
   const statMode     = document.getElementById("statMode");
 
+  // Exclusion DOM
+  const excludeHostname = document.getElementById("excludeHostname");
+  const excludeBtn      = document.getElementById("excludeBtn");
+  const excludeBtnIcon  = document.getElementById("excludeBtnIcon");
+  const excludeBtnText  = document.getElementById("excludeBtnText");
+  const excludedList    = document.getElementById("excludedList");
+  const excludedEmpty   = document.getElementById("excludedEmpty");
+  const clearAllBtn     = document.getElementById("clearAllBtn");
+
   const MODE_DISPLAY = { auto: "Auto", "force-rtl": "RTL", "force-ltr": "LTR" };
   const STATUS_MSG   = {
     auto:      "Auto-detecting Arabic text",
@@ -27,6 +36,9 @@
   let isEnabled   = true;
   let currentMode = "auto";
   let currentFont = "";
+  let currentHostname = "";
+  let isCurrentSiteExcluded = false;
+  let excludedSites = [];
 
   // ── UI updaters ──
 
@@ -35,9 +47,15 @@
     toggleLabel.textContent = isEnabled ? "Active" : "Paused";
     toggleLabel.classList.toggle("off", !isEnabled);
     statusDot.classList.toggle("off", !isEnabled);
-    statusText.textContent = isEnabled
-      ? STATUS_MSG[currentMode]
-      : "Extension paused";
+
+    if (isCurrentSiteExcluded) {
+      statusText.textContent = "Excluded — site skipped";
+      statusDot.classList.add("off");
+    } else {
+      statusText.textContent = isEnabled
+        ? STATUS_MSG[currentMode]
+        : "Extension paused";
+    }
   }
 
   function updateModeUI() {
@@ -45,7 +63,7 @@
       b.classList.toggle("active", b.dataset.mode === currentMode)
     );
     statMode.textContent = MODE_DISPLAY[currentMode] || "Auto";
-    if (isEnabled) statusText.textContent = STATUS_MSG[currentMode];
+    if (isEnabled && !isCurrentSiteExcluded) statusText.textContent = STATUS_MSG[currentMode];
   }
 
   function updateFontUI() {
@@ -75,19 +93,139 @@
     document.head.appendChild(link);
   }
 
+  // ── Exclusion UI ──
+
+  function updateExcludeUI() {
+    excludeHostname.textContent = currentHostname || "—";
+    isCurrentSiteExcluded = excludedSites.includes(currentHostname);
+
+    if (isCurrentSiteExcluded) {
+      excludeBtn.classList.add("restore");
+      excludeBtnIcon.textContent = "✅";
+      excludeBtnText.textContent = "Restore";
+    } else {
+      excludeBtn.classList.remove("restore");
+      excludeBtnIcon.textContent = "🚫";
+      excludeBtnText.textContent = "Exclude";
+    }
+
+    updateToggleUI();
+    renderExcludedList();
+  }
+
+  function renderExcludedList() {
+    // Remove all site items (keep the empty message)
+    const items = excludedList.querySelectorAll(".excluded-item");
+    items.forEach((item) => item.remove());
+
+    if (excludedSites.length === 0) {
+      excludedEmpty.classList.remove("hidden");
+      clearAllBtn.classList.add("hidden");
+      return;
+    }
+
+    excludedEmpty.classList.add("hidden");
+    clearAllBtn.classList.remove("hidden");
+
+    excludedSites.forEach((hostname) => {
+      const item = document.createElement("div");
+      item.className = "excluded-item";
+
+      const label = document.createElement("span");
+      label.className = "excluded-item-label";
+      label.textContent = hostname;
+
+      const restoreBtn = document.createElement("button");
+      restoreBtn.className = "excluded-item-restore";
+      restoreBtn.textContent = "✕";
+      restoreBtn.title = `Restore ${hostname}`;
+      restoreBtn.addEventListener("click", () => removeSiteFromExclusion(hostname));
+
+      item.appendChild(label);
+      item.appendChild(restoreBtn);
+      excludedList.appendChild(item);
+    });
+  }
+
+  // ── Exclusion logic ──
+
+  function toggleCurrentSiteExclusion() {
+    if (!currentHostname) return;
+
+    if (isCurrentSiteExcluded) {
+      excludedSites = excludedSites.filter((h) => h !== currentHostname);
+    } else if (!excludedSites.includes(currentHostname)) {
+      excludedSites.push(currentHostname);
+    }
+
+    chrome.storage.local.set({ autoRtlExcludedSites: excludedSites }, () => {
+      updateExcludeUI();
+      notifyContentScript();
+    });
+  }
+
+  function removeSiteFromExclusion(hostname) {
+    excludedSites = excludedSites.filter((h) => h !== hostname);
+    chrome.storage.local.set({ autoRtlExcludedSites: excludedSites }, () => {
+      updateExcludeUI();
+      // Notify only if we removed the current site
+      if (hostname === currentHostname) {
+        notifyContentScript();
+      }
+    });
+  }
+
+  function clearAllExclusions() {
+    excludedSites = [];
+    chrome.storage.local.set({ autoRtlExcludedSites: [] }, () => {
+      updateExcludeUI();
+      notifyContentScript();
+    });
+  }
+
+  function notifyContentScript() {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (!tabs[0]?.id) return;
+      chrome.tabs.sendMessage(
+        tabs[0].id,
+        { type: "autortl-site-excluded" },
+        () => void chrome.runtime.lastError
+      );
+    });
+  }
+
   // ── Load saved settings ──
 
-  chrome.storage.local.get(
-    { autoRtlEnabled: true, autoRtlMode: "auto", autoRtlFont: "" },
-    (data) => {
-      isEnabled   = data.autoRtlEnabled;
-      currentMode = data.autoRtlMode;
-      currentFont = data.autoRtlFont || "";
-      updateToggleUI();
-      updateModeUI();
-      updateFontUI();
-    }
-  );
+  function loadAll() {
+    chrome.storage.local.get(
+      { autoRtlEnabled: true, autoRtlMode: "auto", autoRtlFont: "", autoRtlExcludedSites: [] },
+      (data) => {
+        isEnabled     = data.autoRtlEnabled;
+        currentMode   = data.autoRtlMode;
+        currentFont   = data.autoRtlFont || "";
+        excludedSites = data.autoRtlExcludedSites || [];
+        updateToggleUI();
+        updateModeUI();
+        updateFontUI();
+        loadCurrentTab();
+      }
+    );
+  }
+
+  function loadCurrentTab() {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (tabs[0]?.url) {
+        try {
+          currentHostname = new URL(tabs[0].url).hostname;
+        } catch {
+          currentHostname = "";
+        }
+      }
+      updateExcludeUI();
+    });
+  }
+
+  loadAll();
 
   // ── Stats ──
 
@@ -159,4 +297,10 @@
       pushUpdate();
     });
   });
+
+  // Exclude button
+  excludeBtn.addEventListener("click", toggleCurrentSiteExclusion);
+
+  // Clear all exclusions
+  clearAllBtn.addEventListener("click", clearAllExclusions);
 })();
