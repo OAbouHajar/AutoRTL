@@ -66,6 +66,8 @@
 
   /** WeakSet to avoid duplicate input listeners */
   const trackedInputs = new WeakSet();
+  /** WeakMap for input handler references (for proper removal) */
+  const inputHandlers = new WeakMap();
 
   // ──────────────────────────────────────────────
   //  Direction detection & application
@@ -205,7 +207,13 @@
     trackedInputs.add(el);
     el.setAttribute(MARKER, "input");
 
-    el.addEventListener("input", () => applyDirection(el), { passive: true });
+    // Use a named handler so we can remove it later when cleaning up
+    const handler = () => applyDirection(el);
+    el.addEventListener("input", handler, { passive: true });
+    inputHandlers.set(el, handler);
+
+    // Apply immediately for pre-filled inputs
+    applyDirection(el);
   }
 
   /**
@@ -219,6 +227,22 @@
       attachInputListener(root);
     }
     root.querySelectorAll(INPUT_SELECTOR).forEach(attachInputListener);
+  }
+
+  /**
+   * Remove all data-autortl="input" markers and their event handlers.
+   */
+  function cleanupInputTracking() {
+    document.querySelectorAll(`[${MARKER}="input"]`).forEach((el) => {
+      resetDirection(el); // Reset styles before removing markers
+      const handler = inputHandlers.get(el);
+      if (handler) {
+        try { el.removeEventListener("input", handler); } catch {};
+        inputHandlers.delete(el);
+      }
+      try { el.removeAttribute(MARKER); } catch {}
+      try { trackedInputs.delete(el); } catch {}
+    });
   }
 
   // ──────────────────────────────────────────────
@@ -325,7 +349,10 @@
   // ──────────────────────────────────────────────
 
   function resetAll() {
-    document.querySelectorAll(`[${MARKER}="input"]`).forEach(resetDirection);
+    // Remove input handlers and markers first
+    cleanupInputTracking();
+
+    // Reset text/display element styles and markers
     document.querySelectorAll(`[${MARKER}="text"]`).forEach((el) => {
       resetDirection(el);
       el.removeAttribute(MARKER);
@@ -354,7 +381,10 @@
     });
 
     // Re-scan everything when re-enabled or mode changes
-    if (enabled) scanTextElements(document.body);
+    if (enabled) {
+      scanInputs(document.body);
+      scanTextElements(document.body);
+    }
   }
 
   // ──────────────────────────────────────────────

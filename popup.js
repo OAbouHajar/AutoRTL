@@ -139,6 +139,7 @@
       restoreBtn.className = "excluded-item-restore";
       restoreBtn.textContent = "✕";
       restoreBtn.title = `Restore ${hostname}`;
+      restoreBtn.setAttribute("aria-label", `Restore ${hostname}`);
       restoreBtn.addEventListener("click", () => removeSiteFromExclusion(hostname));
 
       item.appendChild(label);
