@@ -50,6 +50,9 @@
 
   let enabled = true;
 
+  /** Whether the current site is excluded */
+  let siteExcluded = false;
+
   /**
    * Direction mode:
    *   "auto"      – detect per-element (default)
@@ -63,6 +66,8 @@
 
   /** WeakSet to avoid duplicate input listeners */
   const trackedInputs = new WeakSet();
+  /** WeakMap for input handler references (for proper removal) */
+  const inputHandlers = new WeakMap();
 
   // ──────────────────────────────────────────────
   //  Direction detection & application
@@ -162,7 +167,7 @@
    * @param {HTMLElement} el
    */
   function applyDirection(el) {
-    if (!enabled) return;
+    if (!enabled || siteExcluded) return;
 
     const text = getText(el);
     if (text.trim().length === 0) return;
@@ -202,7 +207,13 @@
     trackedInputs.add(el);
     el.setAttribute(MARKER, "input");
 
-    el.addEventListener("input", () => applyDirection(el), { passive: true });
+    // Use a named handler so we can remove it later when cleaning up
+    const handler = () => applyDirection(el);
+    el.addEventListener("input", handler, { passive: true });
+    inputHandlers.set(el, handler);
+
+    // Apply immediately for pre-filled inputs
+    applyDirection(el);
   }
 
   /**
@@ -216,6 +227,22 @@
       attachInputListener(root);
     }
     root.querySelectorAll(INPUT_SELECTOR).forEach(attachInputListener);
+  }
+
+  /**
+   * Remove all data-autortl="input" markers and their event handlers.
+   */
+  function cleanupInputTracking() {
+    document.querySelectorAll(`[${MARKER}="input"]`).forEach((el) => {
+      resetDirection(el); // Reset styles before removing markers
+      const handler = inputHandlers.get(el);
+      if (handler) {
+        try { el.removeEventListener("input", handler); } catch {};
+        inputHandlers.delete(el);
+      }
+      try { el.removeAttribute(MARKER); } catch {}
+      try { trackedInputs.delete(el); } catch {}
+    });
   }
 
   // ──────────────────────────────────────────────
@@ -241,7 +268,7 @@
    * @param {HTMLElement} el
    */
   function fixTextElement(el) {
-    if (!enabled) return;
+    if (!enabled || siteExcluded) return;
     if (SKIP_TAGS.has(el.tagName)) return;
     if (el.id === "autortl-toggle") return;
     // Never touch elements that are inside a contenteditable — this disrupts cursor
@@ -266,7 +293,7 @@
    * @param {HTMLElement} el
    */
   function fixGenericBlock(el) {
-    if (!enabled) return;
+    if (!enabled || siteExcluded) return;
     if (SKIP_TAGS.has(el.tagName)) return;
     if (el.id === "autortl-toggle") return;
     if (el.getAttribute(MARKER)) return; // already processed
@@ -312,6 +339,7 @@
    * @param {ParentNode} root
    */
   function fullScan(root) {
+    if (siteExcluded) return;
     scanInputs(root);
     scanTextElements(root);
   }
@@ -320,7 +348,23 @@
   //  Re-apply / reset all
   // ──────────────────────────────────────────────
 
+  function resetAll() {
+    // Remove input handlers and markers first
+    cleanupInputTracking();
+
+    // Reset text/display element styles and markers
+    document.querySelectorAll(`[${MARKER}="text"]`).forEach((el) => {
+      resetDirection(el);
+      el.removeAttribute(MARKER);
+    });
+  }
+
   function reapplyAll() {
+    if (siteExcluded) {
+      resetAll();
+      return;
+    }
+
     // Re-fix tracked inputs
     document.querySelectorAll(`[${MARKER}="input"]`).forEach((el) => {
       enabled ? applyDirection(el) : resetDirection(el);
@@ -337,7 +381,10 @@
     });
 
     // Re-scan everything when re-enabled or mode changes
-    if (enabled) scanTextElements(document.body);
+    if (enabled) {
+      scanInputs(document.body);
+      scanTextElements(document.body);
+    }
   }
 
   // ──────────────────────────────────────────────
@@ -356,6 +403,8 @@
   }
 
   const observer = new MutationObserver((mutations) => {
+    if (siteExcluded) return;
+
     let needsBroadScan = false;
 
     for (const mutation of mutations) {
@@ -421,6 +470,37 @@
   }
 
   // ──────────────────────────────────────────────
+  //  Exclusion list helpers
+  // ──────────────────────────────────────────────
+
+  /**
+   * Get the current page hostname.
+   * @returns {string}
+   */
+  function getCurrentHostname() {
+    return window.location.hostname;
+  }
+
+  /**
+   * Check if the current site is excluded and update the flag.
+   * @returns {Promise<boolean>}
+   */
+  function checkExclusion() {
+    return new Promise((resolve) => {
+      try {
+        chrome.storage.local.get({ autoRtlExcludedSites: [] }, (data) => {
+          const list = data.autoRtlExcludedSites || [];
+          siteExcluded = list.includes(getCurrentHostname());
+          resolve(siteExcluded);
+        });
+      } catch {
+        siteExcluded = false;
+        resolve(false);
+      }
+    });
+  }
+
+  // ──────────────────────────────────────────────
   //  Settings persistence
   // ──────────────────────────────────────────────
 
@@ -467,13 +547,21 @@
 
         reapplyAll();
         sendResponse({ ok: true });
-      }
-
-      if (msg.type === "autortl-get-state") {
+      } else if (msg.type === "autortl-get-state") {
         // Gather live stats for the popup
         const fixedCount = document.querySelectorAll(`[${MARKER}="text"]`).length;
         const inputCount = document.querySelectorAll(`[${MARKER}="input"]`).length;
-        sendResponse({ enabled, mode, fixedCount, inputCount });
+        sendResponse({ enabled, mode, fixedCount, inputCount, siteExcluded });
+      } else if (msg.type === "autortl-site-excluded") {
+        // The popup toggled exclusion — re-check and react
+        checkExclusion().then(() => {
+          reapplyAll();
+          if (!siteExcluded && enabled) {
+            fullScan(document.body);
+          }
+          sendResponse({ ok: true, siteExcluded });
+        });
+        return true; // keep message channel open for async response
       }
     });
   } catch { /* not in extension context */ }
@@ -484,9 +572,12 @@
 
   async function init() {
     await loadSettings();
+    await checkExclusion();
 
-    // Full initial scan — inputs AND display text
-    fullScan(document);
+    if (!siteExcluded) {
+      // Full initial scan — inputs AND display text
+      fullScan(document);
+    }
 
     // Observe future DOM changes
     observer.observe(document.body, {
